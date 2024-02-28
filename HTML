@@ -1,0 +1,135 @@
+<head>
+	<title>BOIDS</title>
+</head>
+<body style="background-color: #202020; overflow: hidden;">
+	<p style="color: white;" id="Debug">skdjfhsd</p>
+	<canvas id="MainCanvas" style="position: absolute; left: 0; top: 0;">
+</body>
+
+<script>
+	var SizeX = window.innerWidth;
+	var SizeY = window.innerHeight;
+
+	var Canvas = document.getElementById("MainCanvas");
+	var Context = Canvas.getContext("2d");
+	Canvas.width = SizeX;
+	Canvas.height = SizeY;
+
+	function DrawBoid(PosX, PosY, Dir) {
+		/*
+		Context.beginPath();
+		Context.arc(PosX, PosY, 8, 0, 2 * Math.PI);
+		Context.moveTo(Math.cos(Dir) * 8 + PosX, Math.sin(Dir) * 8 + PosY);
+		Context.lineTo(Math.cos(Dir) * 16 + PosX, Math.sin(Dir) * 16 + PosY);
+		Context.strokeStyle = "#ffffff";
+		Context.lineWidth = 2;
+		Context.stroke();
+		*/
+
+		Context.beginPath();
+
+		Context.moveTo(Math.cos(Dir) * 8 + PosX, Math.sin(Dir) * 8 + PosY);
+		Context.lineTo(Math.cos(Dir + (1/3 * 2 * Math.PI)) * 8 + PosX, Math.sin(Dir + (1/3 * 2 * Math.PI)) * 8 + PosY);
+		Context.lineTo(Math.cos(Dir + (2/3 * 2 * Math.PI)) * 8 + PosX, Math.sin(Dir + (2/3 * 2 * Math.PI)) * 8 + PosY);
+		Context.closePath();
+
+		Context.moveTo(Math.cos(Dir) * 8 + PosX, Math.sin(Dir) * 8 + PosY);
+		Context.lineTo(Math.cos(Dir) * 16 + PosX, Math.sin(Dir) * 16 + PosY);
+		
+		Context.strokeStyle = "#ffffff";
+		Context.lineWidth = 2;
+		Context.stroke();
+	}
+
+	function Distance(X1, Y1, X2, Y2) {
+		return Math.sqrt((X1 - X2) ** 2 + (Y1 - Y2) ** 2);
+	}
+
+	function Rand() {
+		return Math.random();
+	}
+
+	class Boid {
+		constructor(PosX, PosY, Damage, Speed) {
+			this.X = PosX;
+			this.Y = PosY;
+			this.Dir = Rand() * 2 * Math.PI;
+			this.Health = 20;
+			this.Damage = Damage;
+			this.Speed = Speed;
+			this.Hunger = 100;
+			this.DirVel = 0;
+		}
+	}
+
+	var Boids = [];
+	for (let i = 0; i < 256; i++) {
+		let NewBoid = new Boid(Rand() * SizeX, Rand() * SizeY, 0, 2);
+		Boids.push(NewBoid);
+	}
+
+	var Time = 0;
+	const TimeSpeed = 0;
+	
+	function Frame() {
+		if (Time >= TimeSpeed) {
+			Time = 0;
+			
+			SizeX = window.innerWidth;
+			SizeY = window.innerHeight;
+			
+			Canvas.width = SizeX;
+			Canvas.height = SizeY;
+			
+			Context.beginPath();
+			Context.clearRect(0, 0, SizeX, SizeY);
+	
+			for (let i = 0; i < Boids.length; i++) {
+				Boid = Boids[i];
+	
+				Boid.DirVel += (Rand() - .5) / 10;
+				Boid.DirVel /= 1.05;
+				Boid.DirVel = Math.min(Boid.DirVel, .1);
+				Boid.DirVel = Math.max(Boid.DirVel, -.1);
+				
+				Boid.Dir += Boid.DirVel;
+				if (Boid.Dir >= 2 * Math.PI) {
+					Boid.Dir = 0;
+				}
+				
+				Boid.X += Math.cos(Boid.Dir) * Boid.Speed;
+				Boid.Y += Math.sin(Boid.Dir) * Boid.Speed;
+	
+				if (Boid.X < -24) {
+					Boid.X = SizeX + 24;
+				}
+				if (Boid.Y < -24) {
+					Boid.Y = SizeY + 24;
+				}
+				if (Boid.X > SizeX + 24) {
+					Boid.X = -24;
+				}
+				if (Boid.Y > SizeY + 24) {
+					Boid.Y = -24;
+				}
+				
+				DrawBoid(Boid.X, Boid.Y, Boid.Dir);
+	
+				for (let ii = 0; ii < Boids.length; ii++) {			
+					Boid2 = Boids[ii];
+	
+					if (Boid2 !== Boid && Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) < 50) {
+					//Boid2.Dir / Math.min(Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) / 100, 2)
+						Boid.Dir = (Boid2.Dir / 64) + Boid.Dir;
+					
+						//Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y)
+					}
+				}
+			}
+		}
+
+		Time++
+		requestAnimationFrame(Frame);
+	}
+	Frame();
+</script>
