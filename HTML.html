@@ -1,0 +1,248 @@
+<head>
+	<title>BOIDS</title>
+</head>
+<body style="background-color: #202020; overflow: hidden;">
+	<p style="color: white;" id="Debug"></p>
+	<canvas id="MainCanvas" style="position: absolute; left: 0; top: 0;">
+</body>
+
+<script>
+	document.onmousemove = MouseMove;
+	document.onmousedown = MouseDown;
+
+	var SizeX = window.innerWidth;
+	var SizeY = window.innerHeight;
+
+	var Canvas = document.getElementById("MainCanvas");
+	var Context = Canvas.getContext("2d");
+	Canvas.width = SizeX;
+	Canvas.height = SizeY;
+
+	const Circles = false;
+	const Fill = true;
+	const Point = false;
+
+	function DrawBoid(Boid) {
+		let Dir = Boid.Dir;
+		let PosX = Boid.X;
+		let PosY = Boid.Y;
+		let Color = Boid.Color;
+		let Size = Boid.Size;
+
+		if (Circles === true) {
+			Context.beginPath();
+			Context.arc(PosX, PosY, 8 * Size, 0, 2 * Math.PI);
+			Context.strokeStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
+			Context.lineWidth = 2;
+			Context.fillStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
+
+			if (Boid.ClosestToMouse === true) {
+				Context.strokeStyle = "rgb(255, 255, 255)";
+				Context.fillStyle = "rgb(255, 255, 255)";
+			}
+
+			if (Fill === true) {
+				Context.fill();
+			} else {
+				Context.stroke();
+			}
+		} else {
+			Context.beginPath();
+
+			Context.moveTo(Math.cos(Dir) * 8 * Size + PosX, Math.sin(Dir) * 8 * Size + PosY);
+			Context.lineTo(Math.cos(Dir + (1/3 * 2 * Math.PI)) * 8 * Size + PosX, Math.sin(Dir + (1/3 * 2 * Math.PI)) * 8 * Size + PosY);
+			Context.lineTo(Math.cos(Dir + (2/3 * 2 * Math.PI)) * 8 * Size + PosX, Math.sin(Dir + (2/3 * 2 * Math.PI)) * 8 * Size + PosY);
+			Context.closePath();
+
+			Context.moveTo(Math.cos(Dir) * 8 * Size + PosX, Math.sin(Dir) * 8 * Size + PosY);
+			Context.lineTo(Math.cos(Dir) * 16 * Size + PosX, Math.sin(Dir) * 16 * Size + PosY);
+			
+			Context.strokeStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
+			Context.lineWidth = 2;
+			Context.fillStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
+
+			if (Boid.ClosestToMouse === true) {
+				Context.strokeStyle = "rgb(255, 255, 255)";
+				Context.fillStyle = "rgb(255, 255, 255)";
+			}
+
+			if (Fill === true) {
+				Context.fill();
+				if (Point === true) {
+					Context.stroke();
+				}
+			} else {
+				Context.stroke();
+			}
+		}
+	}
+
+	function Distance(X1, Y1, X2, Y2) {
+		return Math.sqrt((X1 - X2) ** 2 + (Y1 - Y2) ** 2);
+	}
+
+	function Rand() {
+		return Math.random();
+	}
+
+	class Boid {
+		constructor(PosX, PosY, Damage, Speed) {
+			this.X = PosX;
+			this.Y = PosY;
+			this.Dir = Rand() * 2 * Math.PI;
+			this.Health = 20;
+			this.Damage = Damage;
+			this.Speed = Speed;
+			this.Hunger = 100;
+			this.DirVel = 0;
+			this.Color = {
+				Hue: Rand() * 360,
+				Saturation: 100,
+				Brightness: Rand() * 40 + 10
+			},
+			this.StayColor = 0
+			this.Size = 1;
+			this.ClosestToMouse = false;
+		}
+	}
+
+	var Boids = [];
+	for (let i = 0; i < 750; i++) {
+		let NewBoid = new Boid(Rand() * SizeX, Rand() * SizeY, 0, 2);
+		Boids.push(NewBoid);
+	}
+
+	var Mouse = {
+		X: 0,
+		Y: 0
+	}
+
+	function MouseMove() {
+		Mouse.X = window.event.clientX;
+		Mouse.Y = window.event.clientY;
+	}
+
+	let ClosestBoid = null;
+	function MouseDown() {
+		if (ClosestBoid !== null) {
+			ClosestBoid.Color.Hue = Rand() * 360;
+			ClosestBoid.StayColor = 600;
+		}
+	}
+
+	var Time = 0;
+	const TimeSpeed = 0;
+	
+	function Frame() {
+		if (Time >= TimeSpeed) {
+			Time = 0;
+			
+			SizeX = window.innerWidth;
+			SizeY = window.innerHeight;
+			
+			Canvas.width = SizeX;
+			Canvas.height = SizeY;
+			
+			Context.beginPath();
+			Context.clearRect(0, 0, SizeX, SizeY);
+
+			let Dist = 999999999999999;
+
+			//Boid.Color.Hue = Rand() * 360;
+			//Boid.StayColor = 600
+
+			for (let i = 0; i < Boids.length; i++) {
+				Boid = Boids[i];
+
+				Boid.ClosestToMouse = false;
+				if (Distance(Boid.X, Boid.Y, Mouse.X, Mouse.Y) < Dist) {
+					Dist = Distance(Boid.X, Boid.Y, Mouse.X, Mouse.Y);
+					ClosestBoid = Boid;
+				}
+			}
+			ClosestBoid.ClosestToMouse = true;
+	
+			for (let i = 0; i < Boids.length; i++) {
+				Boid = Boids[i];
+	
+				Boid.DirVel += (Rand() - .5) / 10;
+				Boid.DirVel /= 1.05;
+				Boid.DirVel = Math.min(Boid.DirVel, .1);
+				Boid.DirVel = Math.max(Boid.DirVel, -.1);
+				
+				Boid.Dir += Boid.DirVel;
+				if (Boid.Dir >= 2 * Math.PI) {
+					Boid.Dir = 0;
+				}
+				
+				Boid.X += Math.cos(Boid.Dir) * Boid.Speed;
+				Boid.Y += Math.sin(Boid.Dir) * Boid.Speed;
+	
+				if (Boid.X < -24) {
+					Boid.X = SizeX + 24;
+				}
+				if (Boid.Y < -24) {
+					Boid.Y = SizeY + 24;
+				}
+				if (Boid.X > SizeX + 24) {
+					Boid.X = -24;
+				}
+				if (Boid.Y > SizeY + 24) {
+					Boid.Y = -24;
+				}
+
+				Boid.Color.Hue += .1;
+
+				Boid.StayColor -= 1;
+				
+				if (Boid.StayColor <= 0) {
+					Boid.Size = (Boid.Size - 1) / 1.05 + 1;
+				} else {
+					Boid.Size = (Boid.Size - 3) / 1.1 + 3;
+				}
+				
+				DrawBoid(Boid);
+				
+				let NumBoids = 1;
+				let RotateTo = Boid.Dir;
+				let AvgPos = {
+					X: Boid.X,
+					Y: Boid.Y
+				}
+				for (let ii = 0; ii < Boids.length; ii++) {			
+					Boid2 = Boids[ii];
+					
+					if (Boid2 !== Boid && Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) < 50 + ((Boid2.Size - 1) * 50)) {
+						NumBoids++
+
+						//Seperation
+						MoveDir = Math.atan2(Boid2.Y - Boid.Y, Boid2.X - Boid.X);
+						Boid.X -= Math.cos(MoveDir) / Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) * 20 * (Boid2.Size / 3);
+						Boid.Y -= Math.sin(MoveDir) / Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) * 20 * (Boid2.Size / 3);
+						
+						//Alignment
+						RotateTo += Boid2.Dir;
+
+						//Cohesion
+						AvgPos.X += Boid2.X;
+						AvgPos.Y += Boid2.Y;
+
+						//Color
+						if (Boid.StayColor <= 0) {
+							Boid.Color.Hue = (Boid.Color.Hue + Boid2.Color.Hue) / 2;
+						}
+					
+						//Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y)
+					}
+				}
+				Boid.Dir = RotateTo / NumBoids;
+				//Boid.X = (AvgPos.X / NumBoids) / 128 + Boid.X;
+				//Boid.Y = (AvgPos.Y / NumBoids) / 128 + Boid.Y;
+			}
+		}
+
+		Time++
+		requestAnimationFrame(Frame);
+	}
+	Frame();
+</script>
