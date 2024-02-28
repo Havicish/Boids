@@ -18,7 +18,7 @@
 	Canvas.width = SizeX;
 	Canvas.height = SizeY;
 
-	const Circles = false;
+	const Circles = true;
 	const Fill = true;
 	const Point = false;
 
@@ -33,7 +33,7 @@
 			Context.beginPath();
 			Context.arc(PosX, PosY, 8 * Size, 0, 2 * Math.PI);
 			Context.strokeStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
-			Context.lineWidth = 2;
+			Context.lineWidth = 4 * Size;
 			Context.fillStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
 
 			if (Boid.ClosestToMouse === true) {
@@ -58,7 +58,7 @@
 			Context.lineTo(Math.cos(Dir) * 16 * Size + PosX, Math.sin(Dir) * 16 * Size + PosY);
 			
 			Context.strokeStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
-			Context.lineWidth = 2;
+			Context.lineWidth = 4 * Size;
 			Context.fillStyle = `hsl(${Color.Hue}, ${Color.Saturation}%, ${Color.Brightness}%)`;
 
 			if (Boid.ClosestToMouse === true) {
@@ -100,15 +100,16 @@
 				Saturation: 100,
 				Brightness: Rand() * 40 + 10
 			},
-			this.StayColor = 0
-			this.Size = 1;
-			this.ClosestToMouse = false;
+			this.StayColor = 0,
+			this.Leader = 0,
+			this.Size = 1,
+			this.ClosestToMouse = false
 		}
 	}
 
 	var Boids = [];
-	for (let i = 0; i < 750; i++) {
-		let NewBoid = new Boid(Rand() * SizeX, Rand() * SizeY, 0, 2);
+	for (let i = 0; i < 500; i++) {
+		let NewBoid = new Boid(Rand() * SizeX, Rand() * SizeY, 0, Rand() * 2 + 1);
 		Boids.push(NewBoid);
 	}
 
@@ -127,6 +128,7 @@
 		if (ClosestBoid !== null) {
 			ClosestBoid.Color.Hue = Rand() * 360;
 			ClosestBoid.StayColor = 600;
+			ClosestBoid.Leader = 600;
 		}
 	}
 
@@ -146,11 +148,7 @@
 			Context.beginPath();
 			Context.clearRect(0, 0, SizeX, SizeY);
 
-			let Dist = 999999999999999;
-
-			//Boid.Color.Hue = Rand() * 360;
-			//Boid.StayColor = 600
-
+			let Dist = 999999999999999999;
 			for (let i = 0; i < Boids.length; i++) {
 				Boid = Boids[i];
 
@@ -194,8 +192,9 @@
 				Boid.Color.Hue += .1;
 
 				Boid.StayColor -= 1;
+				Boid.Leader -= 1;
 				
-				if (Boid.StayColor <= 0) {
+				if (Boid.Leader <= 0) {
 					Boid.Size = (Boid.Size - 1) / 1.05 + 1;
 				} else {
 					Boid.Size = (Boid.Size - 3) / 1.1 + 3;
@@ -204,10 +203,11 @@
 				DrawBoid(Boid);
 				
 				let NumBoids = 1;
-				let RotateTo = Boid.Dir;
+				let RotateTo = Boid.Dir * 16;
+				let OtherBoidStayColor = false;
 				let AvgPos = {
-					X: Boid.X,
-					Y: Boid.Y
+					X: 0,
+					Y: 0
 				}
 				for (let ii = 0; ii < Boids.length; ii++) {			
 					Boid2 = Boids[ii];
@@ -217,8 +217,8 @@
 
 						//Seperation
 						MoveDir = Math.atan2(Boid2.Y - Boid.Y, Boid2.X - Boid.X);
-						Boid.X -= Math.cos(MoveDir) / Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) * 20 * (Boid2.Size / 3);
-						Boid.Y -= Math.sin(MoveDir) / Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) * 20 * (Boid2.Size / 3);
+						Boid.X -= Math.cos(MoveDir) / Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) * 50 * (Boid2.Size / 3);
+						Boid.Y -= Math.sin(MoveDir) / Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) * 50 * (Boid2.Size / 3);
 						
 						//Alignment
 						RotateTo += Boid2.Dir;
@@ -229,15 +229,31 @@
 
 						//Color
 						if (Boid.StayColor <= 0) {
-							Boid.Color.Hue = (Boid.Color.Hue + Boid2.Color.Hue) / 2;
+							Boid.Color.Hue = (Boid.Color.Hue * 64 + Boid2.Color.Hue) / 65;
 						}
 					
 						//Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y)
 					}
+
+					if (Boid2 !== Boid && Distance(Boid.X, Boid.Y, Boid2.X, Boid2.Y) < 150 && Boid2.StayColor > 0) {
+						OtherBoidStayColor = true;
+					}
 				}
-				Boid.Dir = RotateTo / NumBoids;
-				//Boid.X = (AvgPos.X / NumBoids) / 128 + Boid.X;
-				//Boid.Y = (AvgPos.Y / NumBoids) / 128 + Boid.Y;
+				
+				Boid.Dir = RotateTo / (NumBoids + 15);
+
+				if (NumBoids >= 2) {
+					AvgPos.X /= NumBoids - 1;
+					AvgPos.Y /= NumBoids - 1;
+					let MoveTowards = Math.atan2(AvgPos.Y - Boid.Y, AvgPos.X - Boid.X);
+					Boid.X += Math.cos(MoveTowards) * 1.5;
+					Boid.Y += Math.sin(MoveTowards) * 1.5;
+				}
+
+				if (NumBoids > 20 && Boid.StayColor <= 0 && OtherBoidStayColor === false) {
+					Boid.Color.Hue = Rand() * 360;
+					Boid.StayColor = 200;
+				}
 			}
 		}
 
